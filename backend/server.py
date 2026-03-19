@@ -1,6 +1,9 @@
 from fastapi import FastAPI, APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 from passlib.context import CryptContext
@@ -21,10 +24,37 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env', override=True)
 
 # ----------------------------
-# Create FastAPI app first ✅
+# Create FastAPI app first
 # ----------------------------
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
+
+# ----------------------------
+# CORS Middleware (must be first)
+# ----------------------------
+class CORSFixMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS":
+            response = Response()
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+            response.headers["Access-Control-Max-Age"] = "3600"
+            return response
+        response = await call_next(request)
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
+
+app.add_middleware(CORSFixMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ----------------------------
 # MongoDB connection
@@ -103,20 +133,14 @@ class ChatResponse(BaseModel):
 # API Endpoints
 # ----------------------------
 
-# Authentication Endpoints
 @api_router.post("/auth/register", response_model=AuthResponse)
 async def register(request: RegisterRequest):
-    # Check if username already exists
     existing_user = await db.users.find_one({"username": request.username})
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already exists")
-    
-    # Check if email already exists
     existing_email = await db.users.find_one({"email": request.email})
     if existing_email:
         raise HTTPException(status_code=400, detail="Email already exists")
-    
-    # Create new user
     hashed_password = pwd_context.hash(request.password)
     user = User(
         username=request.username,
@@ -124,54 +148,41 @@ async def register(request: RegisterRequest):
         name=request.name,
         hashed_password=hashed_password
     )
-    
     await db.users.insert_one(user.model_dump())
-    
-    # Generate JWT token
     token = jwt.encode(
         {"sub": user.username, "user_id": user.id},
         JWT_SECRET,
         algorithm=JWT_ALGORITHM
     )
-    
     return AuthResponse(access_token=token, username=user.username)
 
 
 @api_router.post("/auth/login", response_model=AuthResponse)
 async def login(request: LoginRequest):
-    # Find user by username
     user_data = await db.users.find_one({"username": request.username})
     if not user_data:
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    
-    # Verify password
     if not pwd_context.verify(request.password, user_data["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    
-    # Generate JWT token
     token = jwt.encode(
         {"sub": user_data["username"], "user_id": user_data["id"]},
         JWT_SECRET,
         algorithm=JWT_ALGORITHM
     )
-    
     return AuthResponse(access_token=token, username=user_data["username"])
 
 
-# Chat Endpoints
 @api_router.post("/chat/message", response_model=ChatResponse)
 async def send_message(chat_request: ChatRequest):
     session_id = chat_request.session_id
     user_id = chat_request.user_id
-    
+
     if not session_id:
-        # Create a title from first message (first 50 chars)
         title = chat_request.message[:50] + ("..." if len(chat_request.message) > 50 else "")
         session = ChatSession(title=title, user_id=user_id)
         await db.chat_sessions.insert_one(session.model_dump())
         session_id = session.id
     else:
-        # Update session's updated_at timestamp
         await db.chat_sessions.update_one(
             {"id": session_id},
             {"$set": {"updated_at": datetime.now(timezone.utc)}}
@@ -238,18 +249,15 @@ async def get_chat_history(session_id: str):
 
 @api_router.get("/chat/sessions")
 async def get_user_sessions(user_id: str):
-    """Get all chat sessions for a specific user"""
     sessions = await db.chat_sessions.find(
-        {"user_id": user_id}, 
+        {"user_id": user_id},
         {"_id": 0}
     ).sort("updated_at", -1).to_list(100)
-    
     for session in sessions:
         if isinstance(session.get('created_at'), str):
             session['created_at'] = datetime.fromisoformat(session['created_at'])
         if isinstance(session.get('updated_at'), str):
             session['updated_at'] = datetime.fromisoformat(session['updated_at'])
-    
     return sessions
 
 
@@ -259,20 +267,13 @@ async def root():
 
 
 # ----------------------------
-# Include Routers & Middleware
+# Include Router
 # ----------------------------
-# Include Routers & Middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 app.include_router(api_router)
 
+
 # ----------------------------
-# WebSocket (✅ AFTER app defined)
+# WebSocket
 # ----------------------------
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -284,12 +285,14 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         print("Client disconnected")
 
+
 # ----------------------------
 # Shutdown event
 # ----------------------------
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
 
 # ----------------------------
 # Run Server
