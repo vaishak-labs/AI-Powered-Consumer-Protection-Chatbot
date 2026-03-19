@@ -261,7 +261,7 @@ async def root():
 # ----------------------------
 # Include Routers & Middleware
 # ----------------------------
-app.include_router(api_router)
+# Include Routers & Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -269,6 +269,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(api_router)
 
 # ----------------------------
 # WebSocket (✅ AFTER app defined)
