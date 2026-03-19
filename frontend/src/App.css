@@ -1,0 +1,143 @@
+@import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Work Sans', sans-serif;
+  background: linear-gradient(135deg, #f5f4f3 0%, #f3d9bf 100%);
+  min-height: 100vh;
+}
+
+.App {
+  min-height: 100vh;
+  position: relative;
+}
+
+.app-header {
+  position: fixed;
+  top: 0;
+  right: 0;
+  padding: 1.5rem 2rem;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: white;
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.username-text {
+  font-weight: 600;
+  color: #694902;
+  font-size: 0.95rem;
+}
+
+.logout-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 50px;
+  padding: 0.5rem 1rem;
+  transition: all 0.3s ease;
+}
+
+.logout-button:hover {
+  background: #f5f4f3;
+}
+
+.login-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #694902 0%, #9d6d04 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 50px;
+  font-weight: 600;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.login-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.app-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  text-align: center;
+}
+
+.welcome-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #694902 0%, #9d6d04 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.welcome-subtitle {
+  font-size: 1.25rem;
+  color: #4a5568;
+  max-width: 600px;
+}
+
+.loading-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-size: 1.2rem;
+  color: #4a5568;
+  font-family: 'Work Sans', sans-serif;
+}
+
+@media (max-width: 768px) {
+  .welcome-title {
+    font-size: 1.75rem;
+  }
+
+  .welcome-subtitle {
+    font-size: 1rem;
+  }
+
+  .app-header {
+    padding: 1rem;
+  }
+
+  .user-info {
+    padding: 0.4rem 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .username-text {
+    font-size: 0.85rem;
+  }
+
+  .login-button {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+  }
+}
